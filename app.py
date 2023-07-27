@@ -25,11 +25,10 @@ SERP_API_KEY = os.getenv('SERP_API_KEY')
 BROWSERLESS_API_KEY = os.getenv('BROWSERLESS_API_KEY')
 
 
-def search():
+def search(researchObject):
     url = "https://google.serper.dev/search"
     payload = json.dumps({
-        "q": "apple inc",
-        "gl": "se"
+        "q": researchObject,
     })
     headers = {
         'X-API-KEY': SERP_API_KEY,
@@ -133,8 +132,8 @@ class SearchTool(BaseTool):
     name = "Search"
     description = "useful for when you need to answer questions about current events, data. You should ask targeted questions"
 
-    def _run(self, args: Any):
-        return search()
+    def _run(self, researchObject: str):
+        return search(researchObject)
 
     def _arun(self, args: Any):
         raise NotImplementedError("Not implemented")
