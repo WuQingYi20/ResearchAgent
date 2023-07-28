@@ -1,0 +1,2 @@
+[server]
+pythonExecutable = "research_agent_env\Scripts\pygmentize.exe"
