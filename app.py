@@ -61,7 +61,18 @@ def scrape_website(researchObject: str, url: str):
         response.raise_for_status()  # raise exception for 4XX or 5XX responses
 
         soup = BeautifulSoup(response.content, "html.parser")
-        text = soup.get_text()
+
+        # Remove script and style elements
+        for script in soup(["script", "style"]):
+            script.decompose()
+
+        # extract meaningful text using common tags
+        text = ' '.join(map(lambda p: p.text, soup.find_all(
+            ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'article', 'div', 'span'])))
+
+        # Remove extra whitespaces
+        text = ' '.join(text.split())
+
         print("Content: ", text)
 
         if len(text) > 10000:
@@ -70,10 +81,13 @@ def scrape_website(researchObject: str, url: str):
 
     except requests.exceptions.HTTPError as http_err:
         print(f'HTTP error occurred: {http_err}')
+        return None
     except requests.exceptions.RequestException as req_err:
         print(f'Request error occurred: {req_err}')
+        return None
     except Exception as e:
         print(f'An error occurred: {e}')
+        return None
 
 
 def summary(RAObject, content):
@@ -114,18 +128,26 @@ class ScrapeWebsiteInput(BaseModel):
 
 class ScrapeWebsiteTool(BaseTool):
     name = "scrape_website"
-    description = "Scrape a website from a website url passing both url and research goal,summarize content if too long."
+    description = "Scrape a website from a website url passing both url and research goal, summarize content if too long."
     args_schema: Type[BaseModel] = ScrapeWebsiteInput
+    scraped_urls = []  # Store all scraped URLs here
 
     def _run(self, **kwargs: Any):
         researchObject = kwargs.get('researchObject')
         url = kwargs.get('url')
-        return scrape_website(researchObject, url)
+        result = scrape_website(researchObject, url)
+        # Add the URL to the list of scraped URLs
+        self.scraped_urls.append(url)
+        return result
+
+    def get_scraped_urls(self):
+        # Method to get all scraped URLs
+        return self.scraped_urls
 
     def _arun(self, args: Any):
         url = args.url
         raise NotImplementedError(
-            "can't find implementation for no research objective version")
+            "Can't find implementation for no research objective version")
 
 
 class SearchTool(BaseTool):
@@ -152,13 +174,12 @@ You are a first-class research agent, dedicated to conducting comprehensive and 
 
 2/ Website Scraping: If relevant URLs and articles are available, extract their content to enrich your pool of information. Use scraping tools wisely to gather more valuable data.
 
-3/ Iterative Research: After each scraping and search cycle, critically analyze the collected data. If you identify areas that require further exploration to improve the research quality, undertake more iterations of search and scrape. However, limit this iterative process to a maximum of three cycles.
+3/ Iterative Research: After each scraping and search cycle, critically analyze the collected data. If you identify areas that require further exploration to improve the research quality, undertake more iterations of search and scrape. However, limit this iterative process to a maximum of five cycles.
 
 4/ Evidence-based Findings: Maintain a firm commitment to facts. Base your findings solely on the data you have gathered. You are a gatherer and interpreter of information, not a creator.
 
-5/ Transparent Referencing: Include all reference data and links in your final output to validate your research. The credibility of your findings significantly relies on your transparency in acknowledging your sources.
-
-6/ Repeat Referencing: To reinforce the previous guideline, it's crucial to include all the reference data and links again in your final output. This repetition is not redundant; instead, it reemphasizes the reliability and verifiability of your research.
+5/ Transparent Referencing: Include all reference data and corresponding URLs in your final output to validate your research. This transparency and accessibility to the source material adds to the credibility of your findings.
+6/ Repeat Referencing: To reinforce the importance of transparency, include all the reference data and URLs again in your final output. This action underscores the reliability and verifiability of your research.
 
 7/ Summarization: If the content obtained from website scraping is too extensive, summarize it while retaining the essential points, always keeping the research objective in mind.
 
